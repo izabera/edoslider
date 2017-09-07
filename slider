@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 [[ -t 1 && -t 0 ]] || exit
+LANG=C
 
 getkey () {
   while read -rn1; do
@@ -72,15 +73,28 @@ sliderbg=$'\e[42m'
 reset=$'\e[m'
 
 slider () {
-  var='  0 '
+  # todo: rewrite me please
+  var=
   for (( i = 4; i < cols - 6; i++ )) do
     if (( (i - 4) * 101 > pos[$1] * (cols - 10) - (cols - 10) &&
           (i - 4) * 101 < pos[$1] * (cols - 10) + (cols - 10) )); then
-      var+="$cursor "
+      var+=C
     else
-      var+="$sliderbg "
+      var+=S
     fi
   done
+
+  var=${var//CS/C>S}
+  var=${var//SC/S<C}
+  var=${var/#C/<C}
+  var=${var/#S/>S}
+  var=${var/%C/<C}
+  var=${var/%S/>S}
+  var=${var//[CS]/ }
+  var=${var//>/$sliderbg}
+  var=${var//</$cursor}
+
+  var="  0 $var"
   var+="$reset 100  "
   printf "%s\\r" "$var"
 }
