@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+
+[[ -t 1 ]] || exit
+
+getkey () {
+  while read -rn1; do
+    case $REPLY in
+      q) exit ;;
+      [wk]) key=UP; return ;;
+      [ah]) key=LEFT; return ;;
+      [sj]) key=DOWN; return ;;
+      [dl]) key=RIGHT; return ;;
+      $'\e') ;;
+      *) continue
+    esac
+    read -rn1
+    [[ $REPLY = '[' ]] || continue
+    read -rn1
+    case $REPLY in
+      A) key=UP; return ;;
+      D) key=LEFT; return ;;
+      B) key=DOWN; return ;;
+      C) key=RIGHT; return ;;
+    esac
+  done
+}
+
+
+clear=$'\e[H\e[2J'
+cup0=$'\e[H'
+
+title='e.do slider control'
+header() {
+  header=
+  for (( i = 0; i < (lines - 14)/2; i++ )); do
+    header+=$'\n'
+  done
+  for (( i = 0; i < (cols - ${#title})/2; i++ )); do
+    header+=' '
+  done
+  header+=$title$'\n\n'
+}
+
+term () {
+  cols=$(tput cols) lines=$(tput lines)
+  (( range = (cols - 10) / 100 ))
+  (( range = range > 0 ? range : 1 ))
+  printf %s "$clear"
+
+  header
+}
+
+if (( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4 ) )); then
+  trap 'term; draw' winch
+fi
+
+tput smcup; tput civis
+stty -echo
+trap 'tput rmcup; tput cnorm; stty sane' exit
+
+cursor=$'\e[41m'
+sliderbg=$'\e[42m'
+reset=$'\e[m'
+
+slider () {
+  var='  0 '
+  for (( i = 4; i < cols - 6; i++ )) do
+    if (( (i - 4) * 101 > (pos[$1] - range) * (cols - 10) &&
+          (i - 4) * 101 < (pos[$1] + range) * (cols - 10) )); then
+      var+="$cursor "
+    else
+      var+="$sliderbg "
+    fi
+  done
+  var+="$reset 100  "
+  printf "%s\\r" "$var"
+}
+
+term
+cursor=$'\e[41m'
+
+draw () {
+  printf %s "$cup0" "$header"
+  for s in {0..4}; do
+    if (( s == slider )); then
+      sliderbg=$'\e[42m'
+    else
+      sliderbg=$'\e[43m'
+    fi
+    slider "$s"
+    echo
+    echo
+  done
+
+  s=5
+  if (( s == slider )); then
+    sliderbg=$'\e[42m'
+  else
+    sliderbg=$'\e[43m'
+  fi
+  slider "$s"
+}
+
+pos=(50 50 50 50 50 50)
+
+draw
+while getkey; do
+  change=0
+  case $key in
+     LEFT) (( pos[slider] = pos[slider] >   0 ? (change = 1, pos[slider] - 1) : pos[slider] )) ;;
+    RIGHT) (( pos[slider] = pos[slider] < 100 ? (change = 1, pos[slider] + 1) : pos[slider] )) ;;
+       UP) (( slider = slider > 0 ? (change = 1, slider - 1) : slider )) ;;
+     DOWN) (( slider = slider < 5 ? (change = 1, slider + 1) : slider )) ;;
+  esac
+  (( change )) && draw
+done
