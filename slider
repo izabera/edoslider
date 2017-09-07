@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[[ -t 1 ]] || exit
+[[ -t 1 && -t 0 ]] || exit
 
 getkey () {
   while read -rn1; do
@@ -30,7 +30,7 @@ getkey () {
 clear=$'\e[H\e[2J'
 cup0=$'\e[H'
 
-title='e.do slider control'
+title='e.Do slider control'
 header() {
   header=
   for (( i = 0; i < (lines - 14) / 2; i++ )); do
@@ -98,7 +98,7 @@ draw () {
     fi
     slider "$s"
     echo
-    echo
+    printf '%*s\e[K\n' "$(( cols / 2 ))" "${pos[s]}"
   done
 
   s=5
@@ -109,7 +109,7 @@ draw () {
   fi
   slider "$s"
   echo
-  echo $'\e[J'
+  printf '%*s\e[J\n' "$(( cols / 2 ))" "${pos[s]}"
 }
 
 pos=(50 50 50 50 50 50)
