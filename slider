@@ -5,11 +5,11 @@
 getkey () {
   while read -rn1; do
     case $REPLY in
-      q) exit ;;
-      [wk]) key=UP; return ;;
-      [ah]) key=LEFT; return ;;
-      [sj]) key=DOWN; return ;;
-      [dl]) key=RIGHT; return ;;
+      [qQ]) exit ;;
+      [wWKk]) key=UP; return ;;
+      [aAHh]) key=LEFT; return ;;
+      [sSJj]) key=DOWN; return ;;
+      [dDLl]) key=RIGHT; return ;;
       $'\e') ;;
       *) continue
     esac
