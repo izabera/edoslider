@@ -74,8 +74,8 @@ reset=$'\e[m'
 slider () {
   var='  0 '
   for (( i = 4; i < cols - 6; i++ )) do
-    if (( (i - 4) * 101 > (pos[$1] - range) * (cols - 10) &&
-          (i - 4) * 101 < (pos[$1] + range) * (cols - 10) )); then
+    if (( (i - 4) * 101 > pos[$1] * (cols - 10) - (cols - 10) &&
+          (i - 4) * 101 < pos[$1] * (cols - 10) + (cols - 10) )); then
       var+="$cursor "
     else
       var+="$sliderbg "
@@ -126,7 +126,7 @@ while getkey; do
       stty sane
       tput cnorm
       read -e -i "$key" -p "$prompt"
-      [[ $REPLY =~ ^[0-9]+$ ]] && (( REPLY >= 0 && REPLY <= 100 )) && pos[slider]=$REPLY
+      [[ $REPLY =~ ^[0-9]+$ ]] && (( 10#$REPLY >= 0 && 10#$REPLY <= 100 )) && pos[slider]=$((10#$REPLY))
       tput civis
       stty -echo
       change=1
