@@ -23,6 +23,21 @@ getkey () {
       D) key=LEFT; return ;;
       B) key=DOWN; return ;;
       C) key=RIGHT; return ;;
+      M) # mouse
+        read -rn1 -d '' 'mouse[0]' # read 3 times to avoid \0  (shouldn't happen)
+        read -rn1 -d '' 'mouse[1]'
+        read -rn1 -d '' 'mouse[2]'
+        printf -v 'mouse[0]' %d "'${mouse[0]}"
+        printf -v 'mouse[1]' %d "'${mouse[1]}"
+        printf -v 'mouse[2]' %d "'${mouse[2]}"
+        if (( (mouse[0] & 3) == 0 )); then # mouse button 1
+          # xterm reports position + 32
+          (( mouse[1] -= 32 ))
+          (( mouse[2] -= 32 ))
+
+          key=MOUSE
+          return
+        fi
     esac
   done
 }
@@ -41,6 +56,8 @@ header() {
     header+=' '
   done
   header+=$title$'\n\n'
+  headersize=${header//[!$'\n']}
+  headersize=${#headersize}
 }
 
 prompt () {
@@ -64,13 +81,34 @@ if (( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4 ) 
   trap 'term; draw' winch
 fi
 
-tput smcup; tput civis
-stty -echo
-trap 'tput rmcup; tput cnorm; stty sane' exit
 
-cursor=$'\e[41m'
-sliderbg=$'\e[42m'
-reset=$'\e[m'
+
+
+  mousemode=$'\e[?1000h'
+nomousemode=$'\e[?1000l'
+  altscreen=$'\e[?1049h'
+noaltscreen=$'\e[?1049l'
+    showcur=$'\e[?25h'
+  noshowcur=$'\e[?25l'
+setup () {
+  printf %s   "$mousemode"   "$altscreen" "$noshowcur"
+  stty -echo
+}
+
+cleanup () {
+  printf %s "$nomousemode" "$noaltscreen"   "$showcur"
+  stty sane
+}
+
+setup
+trap exit int
+trap cleanup exit
+trap 'cleanup; kill -STOP "$$"' tstp
+trap 'setup; draw' cont
+
+
+
+
 
 slider () {
   # todo: rewrite me please
@@ -89,7 +127,7 @@ slider () {
   var=${var/#C/<C}
   var=${var/#S/>S}
   var=${var/%C/<C}
-  var=${var/%S/>S}
+  var=${var/%S/S>}
   var=${var//[CS]/ }
   var=${var//>/$sliderbg}
   var=${var//</$cursor}
@@ -99,8 +137,11 @@ slider () {
   printf "%s\\r" "$var"
 }
 
+
 term
 cursor=$'\e[41m'
+reset=$'\e[m'
+
 
 draw () {
   printf %s "$cup0" "$header"
@@ -128,22 +169,38 @@ draw () {
 
 pos=(50 50 50 50 50 50)
 
+
 draw
 while getkey; do
   change=0
   case $key in
-     LEFT) (( pos[slider] = pos[slider] >   0 ? (change = 1, pos[slider] - 1) : pos[slider] )) ;;
-    RIGHT) (( pos[slider] = pos[slider] < 100 ? (change = 1, pos[slider] + 1) : pos[slider] )) ;;
-       UP) (( slider = slider > 0 ? (change = 1, slider - 1) : slider )) ;;
-     DOWN) (( slider = slider < 5 ? (change = 1, slider + 1) : slider )) ;;
+     LEFT) move=j; (( pos[slider] = pos[slider] >   0 ? (change = 1, pos[slider] - 1) : pos[slider] )) ;;
+    RIGHT) move=j; (( pos[slider] = pos[slider] < 100 ? (change = 1, pos[slider] + 1) : pos[slider] )) ;;
+       UP) move=j; (( slider = slider > 0 ? (change = 1, slider - 1) : slider )) ;;
+     DOWN) move=j; (( slider = slider < 5 ? (change = 1, slider + 1) : slider )) ;;
+
     [[:digit:]])
+      move=m
       stty sane
-      tput cnorm
+      printf %s "$showcur" "$nomousemode"
       read -e -i "$key" -p "$prompt"
       [[ $REPLY =~ ^[0-9]+$ ]] && (( 10#$REPLY >= 0 && 10#$REPLY <= 100 )) && pos[slider]=$((10#$REPLY))
-      tput civis
+      printf %s "$noshowcur" "$mousemode"
       stty -echo
-      change=1
+      change=1 ;;
+
+    MOUSE)
+      move=m
+      if (( mouse[1] > 4 && mouse[1] < cols - 5 )); then
+        if (( (mouse[2] - headersize) % 2 )); then
+          (( tmp = (mouse[2] - headersize) / 2 ))
+          if (( tmp <= 5 )); then
+            (( pos[slider=tmp] = (mouse[1] - 4) * 100 / (cols - 10) ))
+            change=1
+          fi
+        fi
+      fi
+      ;;
   esac
   (( change )) && draw
 done
