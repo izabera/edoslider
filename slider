@@ -91,11 +91,13 @@ noaltscreen=$'\e[?1049l'
     showcur=$'\e[?25h'
   noshowcur=$'\e[?25l'
 setup () {
+  [[ $ttymode ]] && stty "$ttymode"
   printf %s   "$mousemode"   "$altscreen" "$noshowcur"
   stty -echo
 }
 
 cleanup () {
+  ttymode=$(stty -g)
   printf %s "$nomousemode" "$noaltscreen"   "$showcur"
   stty sane
 }
