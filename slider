@@ -84,8 +84,8 @@ fi
 
 
 
-  mousemode=$'\e[?1000h'
-nomousemode=$'\e[?1000l'
+  mousemode=$'\e[?1002h' # button event mode
+nomousemode=$'\e[?1002l'
   altscreen=$'\e[?1049h'
 noaltscreen=$'\e[?1049l'
     showcur=$'\e[?25h'
