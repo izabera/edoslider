@@ -24,7 +24,7 @@ getkey () {
       B) key=DOWN; return ;;
       C) key=RIGHT; return ;;
       M) # mouse
-        read -rn1 -d '' 'mouse[0]' # read 3 times to avoid \0  (shouldn't happen)
+        read -rn1 -d '' 'mouse[0]' # read 3 times to avoid \0
         read -rn1 -d '' 'mouse[1]'
         read -rn1 -d '' 'mouse[2]'
         printf -v 'mouse[0]' %d "'${mouse[0]}"
@@ -183,8 +183,15 @@ while getkey; do
       move=m
       stty sane
       printf %s "$showcur" "$nomousemode"
+
       read -e -i "$key" -p "$prompt"
-      [[ $REPLY =~ ^[0-9]+$ ]] && (( 10#$REPLY >= 0 && 10#$REPLY <= 100 )) && pos[slider]=$((10#$REPLY))
+      if [[ $REPLY =~ ^-?[0-9]+$ ]]; then
+        REPLY=$((10#$REPLY))
+        (( REPLY < 0 )) && REPLY=0
+        (( REPLY > 99 )) && REPLY=100
+        pos[slider]=$REPLY
+      fi
+
       printf %s "$noshowcur" "$mousemode"
       stty -echo
       change=1 ;;
